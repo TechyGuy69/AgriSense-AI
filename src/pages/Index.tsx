@@ -7,11 +7,7 @@ import TrendsPanel from '@/components/trends/TrendsPanel';
 import InsightsPanel from '@/components/insights/InsightsPanel';
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState('home');
-
-  const handleGetStarted = () => {
-    setActiveSection('upload');
-  };
+  const [activeSection, setActiveSection] = useState('dashboard');
 
   const renderContent = () => {
     switch (activeSection) {
@@ -28,18 +24,20 @@ const Index = () => {
       case 'insights':
         return <InsightsPanel />;
       default:
-        return <HeroSection onGetStarted={handleGetStarted} />;
+        return (
+          <div className="p-6 h-screen">
+            <MapViewer />
+          </div>
+        );
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {activeSection !== 'home' && (
-        <Header 
-          activeSection={activeSection} 
-          onSectionChange={setActiveSection} 
-        />
-      )}
+      <Header 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection} 
+      />
       {renderContent()}
     </div>
   );

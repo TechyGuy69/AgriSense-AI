@@ -5,13 +5,24 @@ import { Button } from '@/components/ui/button';
 const TrendsPanel = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Crop Health Trends
-        </h1>
-        <p className="text-muted-foreground">
-          Time-series analysis of vegetation indices and environmental factors
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Crop Health Trends
+          </h1>
+          <p className="text-muted-foreground">
+            Time-series analysis of vegetation indices and environmental factors
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Calendar className="h-4 w-4 mr-2" />
+            Last 30 Days
+          </Button>
+          <Button variant="outline" size="sm">
+            Export Data
+          </Button>
+        </div>
       </div>
 
       {/* Key Metrics */}

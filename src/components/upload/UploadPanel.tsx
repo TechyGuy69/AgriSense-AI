@@ -67,14 +67,21 @@ const UploadPanel = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Upload Your Field Data
-        </h1>
-        <p className="text-muted-foreground">
-          Upload GeoTIFF/ENVI imagery and CSV sensor data to analyze crop health and risk
-        </p>
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Upload Field Data
+          </h1>
+          <p className="text-muted-foreground">
+            Upload satellite imagery and sensor data for analysis
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadDemoData}>
+            Load Demo Data
+          </Button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -119,11 +126,6 @@ const UploadPanel = () => {
               />
             </div>
 
-            <div className="mt-4 flex justify-center">
-              <Button variant="earth" onClick={loadDemoData}>
-                Load Demo Data
-              </Button>
-            </div>
           </CardContent>
         </Card>
 

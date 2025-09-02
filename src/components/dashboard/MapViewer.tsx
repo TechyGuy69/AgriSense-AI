@@ -30,9 +30,28 @@ const MapViewer = () => {
   };
 
   return (
-    <div className="h-full flex">
-      {/* Map Area */}
-      <div className="flex-1 relative bg-muted rounded-lg mr-4">
+    <div className="h-full space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Interactive Field Map
+          </h1>
+          <p className="text-muted-foreground">
+            Real-time visualization of crop health and risk assessment
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export Map
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex gap-4 h-[calc(100vh-200px)]">
+        {/* Map Area */}
+        <div className="flex-1 relative bg-muted rounded-lg">
         {/* Map Placeholder */}
         <div className="absolute inset-0 rounded-lg overflow-hidden">
           <img 
@@ -45,11 +64,8 @@ const MapViewer = () => {
 
         {/* Map Controls */}
         <div className="absolute top-4 left-4 space-y-2">
-          <Button variant="secondary" size="icon">
+          <Button variant="secondary" size="icon" title="Map Settings">
             <Map className="h-4 w-4" />
-          </Button>
-          <Button variant="secondary" size="icon">
-            <Download className="h-4 w-4" />
           </Button>
         </div>
 
@@ -150,6 +166,7 @@ const MapViewer = () => {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };
