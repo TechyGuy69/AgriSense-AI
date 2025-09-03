@@ -10,24 +10,25 @@ import { useToast } from '@/hooks/use-toast';
 const MapViewer = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
+  const overlaysRef = useRef<any>({});
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapType, setMapType] = useState<'satellite' | 'hybrid' | 'terrain'>('satellite');
   const { toast } = useToast();
 
   const [activeLayers, setActiveLayers] = useState({
     rgb: true,
-    ndvi: true,
-    stress: false,
+    ndvi: false,
+    stress: true,
     confidence: false,
     alerts: true,
   });
 
   const layers = [
-    { id: 'rgb', name: 'RGB Imagery', description: 'True color satellite imagery' },
-    { id: 'ndvi', name: 'NDVI', description: 'Normalized Difference Vegetation Index' },
-    { id: 'stress', name: 'Stress Heatmap', description: 'Crop stress risk analysis' },
-    { id: 'confidence', name: 'Confidence Layer', description: 'Model prediction confidence' },
-    { id: 'alerts', name: 'Alert Polygons', description: 'High-risk area boundaries' },
+    { id: 'rgb', name: 'RGB Imagery', description: 'True color satellite imagery', color: '#3b82f6' },
+    { id: 'ndvi', name: 'NDVI', description: 'Normalized Difference Vegetation Index', color: '#22c55e' },
+    { id: 'stress', name: 'Stress Heatmap', description: 'Crop stress risk analysis', color: '#ef4444' },
+    { id: 'confidence', name: 'Confidence Layer', description: 'Model prediction confidence', color: '#8b5cf6' },
+    { id: 'alerts', name: 'Alert Polygons', description: 'High-risk area boundaries', color: '#f59e0b' },
   ];
 
   // Sample field coordinates (can be made dynamic)
@@ -37,6 +38,115 @@ const MapViewer = () => {
     { lat: 40.7851, lng: -73.9682 },
     { lat: 40.7831, lng: -73.9682 },
   ];
+
+  const createMapOverlays = (google: any, map: any) => {
+    // Field boundary polygon (always visible for RGB)
+    const fieldArea = new google.maps.Polygon({
+      paths: fieldPolygon,
+      strokeColor: '#22c55e',
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: '#22c55e',
+      fillOpacity: 0.15,
+    });
+    
+    // NDVI overlay (green gradient)
+    const ndviArea = new google.maps.Polygon({
+      paths: fieldPolygon,
+      strokeColor: '#16a34a',
+      strokeOpacity: 0.9,
+      strokeWeight: 3,
+      fillColor: '#22c55e',
+      fillOpacity: 0.4,
+    });
+
+    // Stress heatmap rectangles
+    const stressZones = [
+      new google.maps.Rectangle({
+        bounds: { north: 40.7840, south: 40.7835, east: -73.9700, west: -73.9710 },
+        fillColor: '#ef4444',
+        fillOpacity: 0.6,
+        strokeWeight: 0,
+      }),
+      new google.maps.Rectangle({
+        bounds: { north: 40.7848, south: 40.7843, east: -73.9692, west: -73.9702 },
+        fillColor: '#f59e0b',
+        fillOpacity: 0.5,
+        strokeWeight: 0,
+      }),
+    ];
+
+    // Confidence overlay (purple tint)
+    const confidenceArea = new google.maps.Polygon({
+      paths: fieldPolygon,
+      strokeColor: '#8b5cf6',
+      strokeOpacity: 0.7,
+      strokeWeight: 2,
+      fillColor: '#8b5cf6',
+      fillOpacity: 0.2,
+    });
+
+    // Alert markers
+    const alertMarkers = [
+      new google.maps.Marker({
+        position: { lat: 40.7837, lng: -73.9705 },
+        map: null,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: '#f59e0b',
+          fillOpacity: 0.9,
+          scale: 6,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        title: 'Alert: Irrigation needed',
+      }),
+      new google.maps.Marker({
+        position: { lat: 40.7845, lng: -73.9688 },
+        map: null,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: '#f59e0b',
+          fillOpacity: 0.9,
+          scale: 6,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+        },
+        title: 'Alert: Nutrient deficiency detected',
+      }),
+    ];
+
+    // Store overlays for layer control
+    overlaysRef.current = {
+      rgb: fieldArea,
+      ndvi: ndviArea,
+      stress: stressZones,
+      confidence: confidenceArea,
+      alerts: alertMarkers,
+    };
+
+    // Set initial visibility based on active layers
+    updateLayerVisibility();
+  };
+
+  const updateLayerVisibility = () => {
+    if (!googleMapRef.current || !overlaysRef.current) return;
+
+    Object.keys(overlaysRef.current).forEach(layerId => {
+      const isActive = activeLayers[layerId as keyof typeof activeLayers];
+      const overlay = overlaysRef.current[layerId];
+
+      if (Array.isArray(overlay)) {
+        // Handle arrays (like stress zones or alert markers)
+        overlay.forEach((item: any) => {
+          item.setMap(isActive ? googleMapRef.current : null);
+        });
+      } else {
+        // Handle single overlays
+        overlay.setMap(isActive ? googleMapRef.current : null);
+      }
+    });
+  };
 
   useEffect(() => {
     const initializeMap = async () => {
@@ -68,39 +178,9 @@ const MapViewer = () => {
             fullscreenControl: false,
           });
 
-          // Add field polygon overlay
-          const fieldArea = new google.maps.Polygon({
-            paths: fieldPolygon,
-            strokeColor: '#22c55e',
-            strokeOpacity: 0.8,
-            strokeWeight: 2,
-            fillColor: '#22c55e',
-            fillOpacity: 0.15,
-          });
-          fieldArea.setMap(map);
-
-          // Add sample stress markers
-          const stressMarkers = [
-            { lat: 40.7835, lng: -73.9705, severity: 'high' },
-            { lat: 40.7845, lng: -73.9690, severity: 'medium' },
-          ];
-
-          stressMarkers.forEach(point => {
-            const marker = new google.maps.Marker({
-              position: point,
-              map,
-              icon: {
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: point.severity === 'high' ? '#ef4444' : '#f59e0b',
-                fillOpacity: 0.8,
-                scale: 8,
-                strokeColor: '#ffffff',
-                strokeWeight: 2,
-              },
-              title: `${point.severity.toUpperCase()} stress area`,
-            });
-          });
-
+          // Create overlays
+          createMapOverlays(google, map);
+          
           googleMapRef.current = map;
           setMapLoaded(true);
         }
@@ -117,11 +197,25 @@ const MapViewer = () => {
     initializeMap();
   }, [mapType, toast]);
 
+  // Update layer visibility when activeLayers changes
+  useEffect(() => {
+    updateLayerVisibility();
+  }, [activeLayers]);
+
   const toggleLayer = (layerId: string) => {
-    setActiveLayers(prev => ({
-      ...prev,
-      [layerId]: !prev[layerId],
-    }));
+    setActiveLayers(prev => {
+      const newState = {
+        ...prev,
+        [layerId]: !prev[layerId as keyof typeof prev],
+      };
+      
+      toast({
+        title: `Layer ${newState[layerId as keyof typeof newState] ? 'enabled' : 'disabled'}`,
+        description: `${layers.find(l => l.id === layerId)?.name} layer toggled`,
+      });
+      
+      return newState;
+    });
   };
 
   const changeMapType = (type: 'satellite' | 'hybrid' | 'terrain') => {
@@ -237,63 +331,67 @@ const MapViewer = () => {
           </div>
         </div>
 
-      {/* Layer Panel */}
-      <Card className="w-80 shadow-card">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Layers className="h-5 w-5" />
-            <span>Map Layers</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {layers.map((layer) => (
-            <div key={layer.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2">
-                  {activeLayers[layer.id as keyof typeof activeLayers] ? (
-                    <Eye className="h-4 w-4 text-primary" />
-                  ) : (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className="font-medium text-foreground">{layer.name}</span>
+        {/* Layer Panel */}
+        <Card className="w-80 shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Layers className="h-5 w-5" />
+              <span>Map Layers</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {layers.map((layer) => (
+              <div key={layer.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: layer.color }}
+                    />
+                    {activeLayers[layer.id as keyof typeof activeLayers] ? (
+                      <Eye className="h-4 w-4 text-primary" />
+                    ) : (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="font-medium text-foreground">{layer.name}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {layer.description}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {layer.description}
-                </p>
+                <Switch
+                  checked={activeLayers[layer.id as keyof typeof activeLayers]}
+                  onCheckedChange={() => toggleLayer(layer.id)}
+                />
               </div>
-              <Switch
-                checked={activeLayers[layer.id as keyof typeof activeLayers]}
-                onCheckedChange={() => toggleLayer(layer.id)}
-              />
+            ))}
+
+            <div className="pt-4 border-t border-border">
+              <Button variant="hero" className="w-full">
+                Export Map Data
+              </Button>
             </div>
-          ))}
 
-          <div className="pt-4 border-t border-border">
-            <Button variant="hero" className="w-full">
-              Export Map Data
-            </Button>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="space-y-3 pt-4 border-t border-border">
-            <h4 className="font-semibold text-foreground">Quick Stats</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Healthy Area</span>
-                <span className="text-primary font-medium">38.1 ha (84%)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Stressed Area</span>
-                <span className="text-orange-500 font-medium">5.2 ha (12%)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Critical Area</span>
-                <span className="text-destructive font-medium">1.9 ha (4%)</span>
+            {/* Quick Stats */}
+            <div className="space-y-3 pt-4 border-t border-border">
+              <h4 className="font-semibold text-foreground">Quick Stats</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Healthy Area</span>
+                  <span className="text-primary font-medium">38.1 ha (84%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Stressed Area</span>
+                  <span className="text-orange-500 font-medium">5.2 ha (12%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Critical Area</span>
+                  <span className="text-destructive font-medium">1.9 ha (4%)</span>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
