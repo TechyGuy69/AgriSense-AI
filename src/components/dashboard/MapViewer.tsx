@@ -1,11 +1,19 @@
-import { useState } from 'react';
-import { Map, Layers, Eye, EyeOff, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import ndviDemo from '@/assets/ndvi-demo.jpg';
+import { Loader } from '@googlemaps/js-api-loader';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const MapViewer = () => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const googleMapRef = useRef<any>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapType, setMapType] = useState<'satellite' | 'hybrid' | 'terrain'>('satellite');
+  const { toast } = useToast();
+
   const [activeLayers, setActiveLayers] = useState({
     rgb: true,
     ndvi: true,
@@ -22,11 +30,105 @@ const MapViewer = () => {
     { id: 'alerts', name: 'Alert Polygons', description: 'High-risk area boundaries' },
   ];
 
+  // Sample field coordinates (can be made dynamic)
+  const fieldPolygon = [
+    { lat: 40.7831, lng: -73.9712 },
+    { lat: 40.7851, lng: -73.9712 },
+    { lat: 40.7851, lng: -73.9682 },
+    { lat: 40.7831, lng: -73.9682 },
+  ];
+
+  useEffect(() => {
+    const initializeMap = async () => {
+      try {
+        // Get API key from Supabase secrets
+        const { data, error } = await supabase.functions.invoke('get-maps-key');
+        if (error) throw error;
+        
+        const apiKey = data?.apiKey;
+        if (!apiKey) throw new Error('No API key found');
+
+        const loader = new Loader({
+          apiKey,
+          version: 'weekly',
+          libraries: ['geometry', 'drawing']
+        });
+
+        const google = await loader.load();
+        
+        if (mapRef.current) {
+          const map = new google.maps.Map(mapRef.current, {
+            center: { lat: 40.7841, lng: -73.9697 },
+            zoom: 16,
+            mapTypeId: mapType,
+            tilt: 0,
+            heading: 0,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
+
+          // Add field polygon overlay
+          const fieldArea = new google.maps.Polygon({
+            paths: fieldPolygon,
+            strokeColor: '#22c55e',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#22c55e',
+            fillOpacity: 0.15,
+          });
+          fieldArea.setMap(map);
+
+          // Add sample stress markers
+          const stressMarkers = [
+            { lat: 40.7835, lng: -73.9705, severity: 'high' },
+            { lat: 40.7845, lng: -73.9690, severity: 'medium' },
+          ];
+
+          stressMarkers.forEach(point => {
+            const marker = new google.maps.Marker({
+              position: point,
+              map,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                fillColor: point.severity === 'high' ? '#ef4444' : '#f59e0b',
+                fillOpacity: 0.8,
+                scale: 8,
+                strokeColor: '#ffffff',
+                strokeWeight: 2,
+              },
+              title: `${point.severity.toUpperCase()} stress area`,
+            });
+          });
+
+          googleMapRef.current = map;
+          setMapLoaded(true);
+        }
+      } catch (error: any) {
+        console.error('Map initialization error:', error);
+        toast({
+          title: 'Map loading failed',
+          description: 'Unable to load Google Maps. Please check API key.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    initializeMap();
+  }, [mapType, toast]);
+
   const toggleLayer = (layerId: string) => {
     setActiveLayers(prev => ({
       ...prev,
       [layerId]: !prev[layerId],
     }));
+  };
+
+  const changeMapType = (type: 'satellite' | 'hybrid' | 'terrain') => {
+    setMapType(type);
+    if (googleMapRef.current) {
+      googleMapRef.current.setMapTypeId(type);
+    }
   };
 
   return (
@@ -51,63 +153,89 @@ const MapViewer = () => {
 
       <div className="flex gap-4 h-[calc(100vh-200px)]">
         {/* Map Area */}
-        <div className="flex-1 relative bg-muted rounded-lg">
-        {/* Map Placeholder */}
-        <div className="absolute inset-0 rounded-lg overflow-hidden">
-          <img 
-            src={ndviDemo} 
-            alt="NDVI Analysis Demo" 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent" />
-        </div>
-
-        {/* Map Controls */}
-        <div className="absolute top-4 left-4 space-y-2">
-          <Button variant="secondary" size="icon" title="Map Settings">
-            <Map className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Legend */}
-        <div className="absolute bottom-4 left-4">
-          <Card className="w-48 shadow-card">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">NDVI Scale</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1 text-xs">
-                <div className="flex items-center justify-between">
-                  <span>High Vigor</span>
-                  <div className="w-4 h-3 bg-green-500 rounded"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Moderate</span>
-                  <div className="w-4 h-3 bg-yellow-500 rounded"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Low/Stress</span>
-                  <div className="w-4 h-3 bg-red-500 rounded"></div>
-                </div>
+        <div className="flex-1 relative bg-muted rounded-lg overflow-hidden">
+          {/* Google Maps Container */}
+          <div ref={mapRef} className="w-full h-full" />
+          
+          {/* Loading overlay */}
+          {!mapLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <div className="text-center">
+                <MapPin className="h-8 w-8 animate-pulse mx-auto mb-2 text-primary" />
+                <p className="text-sm text-muted-foreground">Loading field map...</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          )}
 
-        {/* Overlay Info */}
-        <div className="absolute top-4 right-4">
-          <Card className="shadow-card">
-            <CardContent className="p-3">
-              <div className="text-sm space-y-1">
-                <div className="font-semibold text-foreground">Field Analysis</div>
-                <div className="text-muted-foreground">Area: 45.2 hectares</div>
-                <div className="text-muted-foreground">Avg NDVI: 0.72</div>
-                <div className="text-muted-foreground">Risk Level: Low</div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Map Type Controls */}
+          <div className="absolute top-4 left-4 space-y-2">
+            <div className="flex flex-col space-y-1">
+              <Button
+                variant={mapType === 'satellite' ? 'default' : 'secondary'}
+                size="sm"
+                onClick={() => changeMapType('satellite')}
+              >
+                <Satellite className="h-4 w-4 mr-1" />
+                Satellite
+              </Button>
+              <Button
+                variant={mapType === 'hybrid' ? 'default' : 'secondary'}
+                size="sm"
+                onClick={() => changeMapType('hybrid')}
+              >
+                <Map className="h-4 w-4 mr-1" />
+                Hybrid
+              </Button>
+              <Button
+                variant={mapType === 'terrain' ? 'default' : 'secondary'}
+                size="sm"
+                onClick={() => changeMapType('terrain')}
+              >
+                Terrain
+              </Button>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="absolute bottom-4 left-4">
+            <Card className="w-48 shadow-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Field Legend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span>Field Boundary</span>
+                    <div className="w-4 h-3 border-2 border-green-500 bg-green-500/20 rounded"></div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>High Stress</span>
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Medium Stress</span>
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Overlay Info */}
+          <div className="absolute top-4 right-4">
+            <Card className="shadow-card">
+              <CardContent className="p-3">
+                <div className="text-sm space-y-1">
+                  <div className="font-semibold text-foreground">Field Analysis</div>
+                  <div className="text-muted-foreground">Area: 45.2 hectares</div>
+                  <div className="text-muted-foreground">Coordinates: 40.784°N, 73.970°W</div>
+                  <div className="text-muted-foreground">Avg NDVI: 0.72</div>
+                  <div className="text-muted-foreground">Risk Level: Low</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
 
       {/* Layer Panel */}
       <Card className="w-80 shadow-card">
