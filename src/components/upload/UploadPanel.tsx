@@ -3,10 +3,13 @@ import { Upload, FileImage, FileSpreadsheet, AlertCircle, CheckCircle } from 'lu
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const UploadPanel = () => {
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ type: string; name: string }[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [aiResult, setAiResult] = useState<{ text: string; json?: any } | null>(null);
   const { toast } = useToast();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -98,7 +101,7 @@ const UploadPanel = () => {
           </CardHeader>
           <CardContent>
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 dragActive
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
@@ -171,8 +174,8 @@ const UploadPanel = () => {
 
             {uploadedFiles.length > 0 && (
               <div className="mt-6 pt-4 border-t border-border">
-                <Button variant="hero" className="w-full">
-                  Process Data
+                <Button variant="hero" className="w-full" onClick={processData} disabled={processing}>
+                  {processing ? 'Processing…' : 'Process Data'}
                 </Button>
               </div>
             )}
