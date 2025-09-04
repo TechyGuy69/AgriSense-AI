@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Upload, FileImage, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { Upload, FileImage, FileSpreadsheet, AlertCircle, CheckCircle, Camera, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -7,9 +7,11 @@ import { supabase } from '@/integrations/supabase/client';
 
 const UploadPanel = () => {
   const [dragActive, setDragActive] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ type: string; name: string }[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ type: string; name: string; file?: File }[]>([]);
   const [processing, setProcessing] = useState(false);
   const [aiResult, setAiResult] = useState<{ text: string; json?: any } | null>(null);
+  const [photoAnalyzing, setPhotoAnalyzing] = useState(false);
+  const [photoResult, setPhotoResult] = useState<{ text: string; json?: any } | null>(null);
   const { toast } = useToast();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -32,14 +34,16 @@ const UploadPanel = () => {
   }, []);
 
   const handleFiles = (files: File[]) => {
-    const newFiles: { type: string; name: string }[] = [];
+    const newFiles: { type: string; name: string; file?: File }[] = [];
     
     files.forEach((file) => {
       const extension = file.name.split('.').pop()?.toLowerCase();
       if (['tif', 'tiff', 'hdr', 'img'].includes(extension || '')) {
-        newFiles.push({ type: 'image', name: file.name });
+        newFiles.push({ type: 'image', name: file.name, file });
       } else if (['csv'].includes(extension || '')) {
-        newFiles.push({ type: 'data', name: file.name });
+        newFiles.push({ type: 'data', name: file.name, file });
+      } else if (['jpg', 'jpeg', 'png'].includes(extension || '')) {
+        newFiles.push({ type: 'photo', name: file.name, file });
       } else {
         toast({
           title: 'Unsupported file type',
@@ -78,6 +82,37 @@ const UploadPanel = () => {
       toast({ title: 'Processing failed', description: err?.message ?? 'Unexpected error', variant: 'destructive' });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const analyzePhoto = async (file: File) => {
+    try {
+      setPhotoAnalyzing(true);
+      setPhotoResult(null);
+      toast({ title: 'Analyzing photo', description: 'AI is analyzing soil/plant health...' });
+
+      // Convert image to base64
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke('analyze-plant-health', {
+        body: { 
+          image: base64,
+          context: 'Analyze this image for soil health or plant health. Look for signs of disease, nutrient deficiency, water stress, pest damage, or soil quality indicators.'
+        },
+      });
+
+      if (error) throw error;
+      setPhotoResult(data as any);
+      toast({ title: 'Analysis complete', description: 'Plant/soil health assessment ready.' });
+    } catch (err: any) {
+      console.error('Photo analysis error:', err);
+      toast({ title: 'Analysis failed', description: err?.message ?? 'Unexpected error', variant: 'destructive' });
+    } finally {
+      setPhotoAnalyzing(false);
     }
   };
 
@@ -140,13 +175,13 @@ const UploadPanel = () => {
                   Drop files here or click to upload
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Supports: GeoTIFF (.tif), ENVI (.hdr, .img), CSV (.csv)
+                  Supports: GeoTIFF (.tif), ENVI (.hdr, .img), CSV (.csv), Photos (.jpg, .png)
                 </p>
               </div>
               <input
                 type="file"
                 multiple
-                accept=".tif,.tiff,.hdr,.img,.csv"
+                accept=".tif,.tiff,.hdr,.img,.csv,.jpg,.jpeg,.png"
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
               />
@@ -178,6 +213,8 @@ const UploadPanel = () => {
                   >
                     {file.type === 'image' ? (
                       <FileImage className="h-5 w-5 text-earth" />
+                    ) : file.type === 'photo' ? (
+                      <Camera className="h-5 w-5 text-primary" />
                     ) : (
                       <FileSpreadsheet className="h-5 w-5 text-crop" />
                     )}
@@ -186,10 +223,24 @@ const UploadPanel = () => {
                         {file.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {file.type === 'image' ? 'Satellite/Aerial Imagery' : 'Sensor Data'}
+                        {file.type === 'image' ? 'Satellite/Aerial Imagery' : 
+                         file.type === 'photo' ? 'Plant/Soil Photo' : 'Sensor Data'}
                       </p>
                     </div>
-                    <CheckCircle className="h-4 w-4 text-primary" />
+                    {file.type === 'photo' && file.file ? (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => analyzePhoto(file.file!)}
+                        disabled={photoAnalyzing}
+                        className="text-xs"
+                      >
+                        <Brain className="h-3 w-3 mr-1" />
+                        {photoAnalyzing ? 'Analyzing...' : 'Analyze'}
+                      </Button>
+                    ) : (
+                      <CheckCircle className="h-4 w-4 text-primary" />
+                    )}
                   </div>
                 ))}
               </div>
@@ -220,6 +271,23 @@ const UploadPanel = () => {
         </Card>
       )}
 
+      {photoResult && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Brain className="h-5 w-5 text-primary" />
+              <span>Plant/Soil Health Analysis</span>
+            </CardTitle>
+            <CardDescription>AI-powered health assessment from photo</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none dark:prose-invert">
+              <pre className="whitespace-pre-wrap text-sm text-foreground">{photoResult.text}</pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Supported Formats */}
       <Card className="shadow-card">
         <CardHeader>
@@ -235,6 +303,7 @@ const UploadPanel = () => {
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• GeoTIFF (.tif, .tiff) - Georeferenced satellite/drone imagery</li>
                 <li>• ENVI (.hdr, .img) - Hyperspectral data format</li>
+                <li>• Photos (.jpg, .png) - Plant/soil photos for health analysis</li>
                 <li>• Multi-band imagery with Red, Green, Blue, NIR channels</li>
               </ul>
             </div>
