@@ -1,17 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
-import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin } from 'lucide-react';
+import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin, Search, Navigation, Crosshair } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Loader } from '@googlemaps/js-api-loader';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const MapViewer = () => {
   const mapRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const googleMapRef = useRef<any>(null);
+  const autocomplete = useRef<any>(null);
+  const userLocationMarker = useRef<any>(null);
+  const watchId = useRef<number | null>(null);
   const overlaysRef = useRef<any>({});
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapType, setMapType] = useState<'satellite' | 'hybrid' | 'terrain'>('satellite');
   const { toast } = useToast();
 
@@ -148,6 +155,158 @@ const MapViewer = () => {
     });
   };
 
+  // Get user's current location
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: 'Geolocation not supported',
+        description: 'Your browser does not support location services.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        
+        setUserLocation(location);
+        
+        if (googleMapRef.current) {
+          googleMapRef.current.setCenter(location);
+          googleMapRef.current.setZoom(15);
+          
+          // Remove existing user location marker
+          if (userLocationMarker.current) {
+            userLocationMarker.current.setMap(null);
+          }
+          
+          // Add new user location marker
+          userLocationMarker.current = new (window as any).google.maps.Marker({
+            position: location,
+            map: googleMapRef.current,
+            title: 'Your Location',
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="blue" stroke="white" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="3" fill="white"/>
+                </svg>
+              `),
+              scaledSize: new (window as any).google.maps.Size(24, 24),
+            },
+          });
+        }
+        
+        toast({
+          title: 'Location found',
+          description: 'Centered map on your current location.',
+        });
+      },
+      (error) => {
+        let message = 'Could not get your location.';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = 'Location access denied. Please enable location permissions.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = 'Location information unavailable.';
+            break;
+          case error.TIMEOUT:
+            message = 'Location request timed out.';
+            break;
+        }
+        
+        toast({
+          title: 'Location error',
+          description: message,
+          variant: 'destructive',
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000,
+      }
+    );
+  };
+
+  // Start watching user's location
+  const startLocationTracking = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: 'Geolocation not supported',
+        description: 'Your browser does not support location services.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (watchId.current) {
+      navigator.geolocation.clearWatch(watchId.current);
+    }
+
+    watchId.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        
+        setUserLocation(location);
+        
+        if (userLocationMarker.current) {
+          userLocationMarker.current.setPosition(location);
+        } else if (googleMapRef.current) {
+          userLocationMarker.current = new (window as any).google.maps.Marker({
+            position: location,
+            map: googleMapRef.current,
+            title: 'Your Location (Live)',
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="blue" stroke="white" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="3" fill="white"/>
+                  <circle cx="12" cy="12" r="6" fill="none" stroke="blue" stroke-width="1" opacity="0.3"/>
+                </svg>
+              `),
+              scaledSize: new (window as any).google.maps.Size(24, 24),
+            },
+          });
+        }
+      },
+      (error) => {
+        console.error('Location tracking error:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000,
+      }
+    );
+
+    toast({
+      title: 'Location tracking started',
+      description: 'Your location will be updated in real-time.',
+    });
+  };
+
+  // Stop watching user's location
+  const stopLocationTracking = () => {
+    if (watchId.current) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+      
+      toast({
+        title: 'Location tracking stopped',
+        description: 'Real-time location updates disabled.',
+      });
+    }
+  };
+
   useEffect(() => {
     const initializeMap = async () => {
       try {
@@ -161,7 +320,7 @@ const MapViewer = () => {
         const loader = new Loader({
           apiKey,
           version: 'weekly',
-          libraries: ['geometry', 'drawing']
+          libraries: ['geometry', 'drawing', 'places']
         });
 
         const google = await loader.load();
@@ -177,6 +336,42 @@ const MapViewer = () => {
             streetViewControl: false,
             fullscreenControl: false,
           });
+
+          // Initialize Places Autocomplete
+          if (searchInputRef.current) {
+            autocomplete.current = new (window as any).google.maps.places.Autocomplete(searchInputRef.current, {
+              types: ['geocode'],
+              fields: ['place_id', 'geometry', 'name', 'formatted_address'],
+            });
+
+            autocomplete.current.addListener('place_changed', () => {
+              const place = autocomplete.current?.getPlace();
+              if (place?.geometry?.location) {
+                map.setCenter(place.geometry.location);
+                map.setZoom(15);
+                
+                new (window as any).google.maps.Marker({
+                  position: place.geometry.location,
+                  map: map,
+                  title: place.name || place.formatted_address,
+                  icon: {
+                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                    `),
+                    scaledSize: new (window as any).google.maps.Size(32, 32),
+                  },
+                });
+
+                toast({
+                  title: 'Location found',
+                  description: place.formatted_address || place.name || 'Location added to map',
+                });
+              }
+            });
+          }
 
           // Create overlays
           createMapOverlays(google, map);
@@ -196,6 +391,15 @@ const MapViewer = () => {
 
     initializeMap();
   }, [mapType, toast]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (watchId.current) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, []);
 
   // Update layer visibility when activeLayers changes
   useEffect(() => {
@@ -227,6 +431,44 @@ const MapViewer = () => {
 
   return (
     <div className="h-full space-y-4">
+      {/* Search and Controls */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Search Bar */}
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            ref={searchInputRef}
+            placeholder="Search for places, fields, or coordinates..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        {/* Location Controls */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={getCurrentLocation}
+            className="flex items-center gap-2"
+          >
+            <Crosshair className="h-4 w-4" />
+            My Location
+          </Button>
+          
+          <Button
+            variant={watchId.current ? "destructive" : "outline"}
+            size="sm"
+            onClick={watchId.current ? stopLocationTracking : startLocationTracking}
+            className="flex items-center gap-2"
+          >
+            <Navigation className="h-4 w-4" />
+            {watchId.current ? 'Stop Tracking' : 'Track Live'}
+          </Button>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
