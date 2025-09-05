@@ -320,7 +320,7 @@ const MapViewer = () => {
         const loader = new Loader({
           apiKey,
           version: 'weekly',
-          libraries: ['geometry', 'drawing', 'places']
+          libraries: ['geometry', 'drawing', 'places', 'marker']
         });
 
         const google = await loader.load();
@@ -337,38 +337,99 @@ const MapViewer = () => {
             fullscreenControl: false,
           });
 
-          // Initialize Places Autocomplete
+          // Initialize Places Autocomplete with new API
           if (searchInputRef.current) {
-            autocomplete.current = new (window as any).google.maps.places.Autocomplete(searchInputRef.current, {
-              types: ['geocode'],
-              fields: ['place_id', 'geometry', 'name', 'formatted_address'],
+            // Create autocomplete with updated configuration
+            autocomplete.current = new google.maps.places.Autocomplete(searchInputRef.current, {
+              types: ['establishment', 'geocode'],
+              fields: ['place_id', 'geometry', 'name', 'formatted_address', 'types'],
+              componentRestrictions: undefined, // Allow worldwide search
             });
 
+            // Set up the place changed listener
             autocomplete.current.addListener('place_changed', () => {
               const place = autocomplete.current?.getPlace();
-              if (place?.geometry?.location) {
-                map.setCenter(place.geometry.location);
-                map.setZoom(15);
-                
-                new (window as any).google.maps.Marker({
-                  position: place.geometry.location,
-                  map: map,
-                  title: place.name || place.formatted_address,
-                  icon: {
-                    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                      </svg>
-                    `),
-                    scaledSize: new (window as any).google.maps.Size(32, 32),
-                  },
-                });
-
+              
+              if (!place || !place.geometry || !place.geometry.location) {
                 toast({
-                  title: 'Location found',
-                  description: place.formatted_address || place.name || 'Location added to map',
+                  title: 'No location found',
+                  description: 'Please select a location from the dropdown.',
+                  variant: 'destructive',
                 });
+                return;
+              }
+
+              const location = place.geometry.location;
+              map.setCenter(location);
+              map.setZoom(16);
+              
+              // Create a search result marker
+              new google.maps.Marker({
+                position: location,
+                map: map,
+                title: place.name || place.formatted_address,
+                icon: {
+                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                      <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                  `),
+                  scaledSize: new google.maps.Size(32, 32),
+                },
+              });
+
+              // Clear the search input and update state
+              setSearchQuery(place.formatted_address || place.name || '');
+
+              toast({
+                title: 'Location found',
+                description: place.formatted_address || place.name || 'Location added to map',
+              });
+            });
+
+            // Handle manual search input
+            const handleSearch = () => {
+              if (!searchQuery.trim()) return;
+              
+              const service = new google.maps.places.PlacesService(map);
+              const request = {
+                query: searchQuery,
+                fields: ['name', 'geometry', 'formatted_address'],
+              };
+
+              service.textSearch(request, (results, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+                  const place = results[0];
+                  if (place.geometry && place.geometry.location) {
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(16);
+                    
+                    new google.maps.Marker({
+                      position: place.geometry.location,
+                      map: map,
+                      title: place.name || place.formatted_address,
+                    });
+
+                    toast({
+                      title: 'Location found',
+                      description: place.formatted_address || place.name || 'Location found',
+                    });
+                  }
+                } else {
+                  toast({
+                    title: 'Location not found',
+                    description: 'Could not find the specified location.',
+                    variant: 'destructive',
+                  });
+                }
+              });
+            };
+
+            // Add enter key listener for manual search
+            searchInputRef.current.addEventListener('keypress', (e) => {
+              if (e.key === 'Enter') {
+                handleSearch();
               }
             });
           }
