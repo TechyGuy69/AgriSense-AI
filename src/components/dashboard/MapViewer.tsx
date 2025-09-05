@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin, Navigation, Crosshair } from 'lucide-react';
+import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin, Navigation, Crosshair, Mountain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -466,6 +466,7 @@ const MapViewer = () => {
                 size="sm"
                 onClick={() => changeMapType('terrain')}
               >
+                <Mountain className="h-4 w-4 mr-1" />
                 Terrain
               </Button>
             </div>
