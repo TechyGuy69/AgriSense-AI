@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin, Search, Navigation, Crosshair } from 'lucide-react';
+import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin, Navigation, Crosshair } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -10,14 +10,11 @@ import { useToast } from '@/hooks/use-toast';
 
 const MapViewer = () => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const googleMapRef = useRef<any>(null);
-  const autocomplete = useRef<any>(null);
   const userLocationMarker = useRef<any>(null);
   const watchId = useRef<number | null>(null);
   const overlaysRef = useRef<any>({});
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapType, setMapType] = useState<'satellite' | 'hybrid' | 'terrain'>('satellite');
   const { toast } = useToast();
@@ -337,103 +334,6 @@ const MapViewer = () => {
             fullscreenControl: false,
           });
 
-          // Initialize Places Autocomplete with new API
-          if (searchInputRef.current) {
-            // Create autocomplete with updated configuration
-            autocomplete.current = new google.maps.places.Autocomplete(searchInputRef.current, {
-              types: ['establishment', 'geocode'],
-              fields: ['place_id', 'geometry', 'name', 'formatted_address', 'types'],
-              componentRestrictions: undefined, // Allow worldwide search
-            });
-
-            // Set up the place changed listener
-            autocomplete.current.addListener('place_changed', () => {
-              const place = autocomplete.current?.getPlace();
-              
-              if (!place || !place.geometry || !place.geometry.location) {
-                toast({
-                  title: 'No location found',
-                  description: 'Please select a location from the dropdown.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-
-              const location = place.geometry.location;
-              map.setCenter(location);
-              map.setZoom(16);
-              
-              // Create a search result marker
-              new google.maps.Marker({
-                position: location,
-                map: map,
-                title: place.name || place.formatted_address,
-                icon: {
-                  url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                      <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                  `),
-                  scaledSize: new google.maps.Size(32, 32),
-                },
-              });
-
-              // Clear the search input and update state
-              setSearchQuery(place.formatted_address || place.name || '');
-
-              toast({
-                title: 'Location found',
-                description: place.formatted_address || place.name || 'Location added to map',
-              });
-            });
-
-            // Handle manual search input
-            const handleSearch = () => {
-              if (!searchQuery.trim()) return;
-              
-              const service = new google.maps.places.PlacesService(map);
-              const request = {
-                query: searchQuery,
-                fields: ['name', 'geometry', 'formatted_address'],
-              };
-
-              service.textSearch(request, (results, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
-                  const place = results[0];
-                  if (place.geometry && place.geometry.location) {
-                    map.setCenter(place.geometry.location);
-                    map.setZoom(16);
-                    
-                    new google.maps.Marker({
-                      position: place.geometry.location,
-                      map: map,
-                      title: place.name || place.formatted_address,
-                    });
-
-                    toast({
-                      title: 'Location found',
-                      description: place.formatted_address || place.name || 'Location found',
-                    });
-                  }
-                } else {
-                  toast({
-                    title: 'Location not found',
-                    description: 'Could not find the specified location.',
-                    variant: 'destructive',
-                  });
-                }
-              });
-            };
-
-            // Add enter key listener for manual search
-            searchInputRef.current.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter') {
-                handleSearch();
-              }
-            });
-          }
-
           // Create overlays
           createMapOverlays(google, map);
           
@@ -492,21 +392,16 @@ const MapViewer = () => {
 
   return (
     <div className="h-full space-y-4">
-      {/* Search and Controls */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        {/* Search Bar */}
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={searchInputRef}
-            placeholder="Search for places, fields, or coordinates..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      {/* Location Controls */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Interactive Field Map
+          </h1>
+          <p className="text-muted-foreground">
+            Real-time visualization of crop health and risk assessment
+          </p>
         </div>
-        
-        {/* Location Controls */}
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -530,23 +425,6 @@ const MapViewer = () => {
         </div>
       </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Interactive Field Map
-          </h1>
-          <p className="text-muted-foreground">
-            Real-time visualization of crop health and risk assessment
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export Map
-          </Button>
-        </div>
-      </div>
 
       <div className="flex gap-4 h-[calc(100vh-200px)]">
         {/* Map Area */}
