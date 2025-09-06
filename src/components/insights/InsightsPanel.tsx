@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ExportActions from '@/components/actions/ExportActions';
+import TakeAction from '@/components/actions/TakeAction';
 
 interface AIInsight {
   top_risk_drivers: Array<{
@@ -191,6 +193,7 @@ const InsightsPanel = () => {
           )}
         </div>
         <div className="flex gap-2">
+          <ExportActions dataType="insights" currentData={aiInsights} />
           <Button 
             variant="outline" 
             size="sm"
@@ -199,9 +202,6 @@ const InsightsPanel = () => {
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             {isLoading ? 'Analyzing...' : 'Refresh AI'}
-          </Button>
-          <Button variant="outline" size="sm">
-            Export Report
           </Button>
         </div>
       </div>
@@ -318,12 +318,15 @@ const InsightsPanel = () => {
                   )}
                 </div>
 
-                <Button 
-                  variant={card.urgency === 'urgent' ? 'default' : 'outline'} 
-                  className="w-full"
-                >
-                  {card.urgency === 'urgent' ? 'Take Action Now' : 'Schedule Action'}
-                </Button>
+                <TakeAction 
+                  action={{
+                    title: card.title,
+                    description: card.description,
+                    priority: card.priority,
+                    urgency: card.urgency,
+                    actions: card.actions
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -388,6 +391,22 @@ const InsightsPanel = () => {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Live Action Tracking */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Field Activities
+          </CardTitle>
+          <CardDescription>
+            Track ongoing field activities and progress
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TakeAction variant="card" />
         </CardContent>
       </Card>
     </div>

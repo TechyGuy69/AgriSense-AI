@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Loader } from '@googlemaps/js-api-loader';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ExportActions from '@/components/actions/ExportActions';
 
 const MapViewer = () => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -498,82 +499,247 @@ const MapViewer = () => {
           </div>
 
           {/* Overlay Info */}
-          <div className="absolute top-4 right-4">
-            <Card className="shadow-card">
-              <CardContent className="p-3">
-                <div className="text-sm space-y-1">
-                  <div className="font-semibold text-foreground">Field Analysis</div>
-                  <div className="text-muted-foreground">Area: 45.2 hectares</div>
-                  <div className="text-muted-foreground">Coordinates: 40.784°N, 73.970°W</div>
-                  <div className="text-muted-foreground">Avg NDVI: 0.72</div>
-                  <div className="text-muted-foreground">Risk Level: Low</div>
+          <div className="absolute bottom-4 right-4">
+            <Card className="w-64 shadow-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span>Map Actions</span>
+                  <Eye className="h-4 w-4" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="grid grid-cols-2 gap-1">
+                  <Button variant="outline" size="sm" className="text-xs">
+                    <Download className="h-3 w-3 mr-1" />
+                    Export
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-xs">
+                    Save View
+                  </Button>
                 </div>
+                {userLocation && (
+                  <div className="text-xs text-muted-foreground">
+                    Location: {userLocation.lat.toFixed(4)}, {userLocation.lng.toFixed(4)}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Layer Panel */}
-        <Card className="w-80 shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Layers className="h-5 w-5" />
-              <span>Map Layers</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {layers.map((layer) => (
-              <div key={layer.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: layer.color }}
+        {/* Layer Control Panel */}
+        <div className="w-80 space-y-4">
+          {/* Export and Actions */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Map Tools</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ExportActions dataType="map" />
+              <div className="grid grid-cols-1 gap-2">
+                <Button variant="outline" size="sm" className="flex items-center gap-1 text-xs">
+                  Generate Field Report
+                </Button>
+                <Button variant="outline" size="sm" className="flex items-center gap-1 text-xs">
+                  Schedule Field Visit
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Layer Controls */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center space-x-2">
+                <Layers className="h-4 w-4" />
+                <span>Data Layers</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {layers.map((layer) => (
+                  <div key={layer.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: layer.color }}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{layer.name}</p>
+                        <p className="text-xs text-muted-foreground">{layer.description}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={activeLayers[layer.id as keyof typeof activeLayers]}
+                      onCheckedChange={() => toggleLayer(layer.id)}
                     />
-                    {activeLayers[layer.id as keyof typeof activeLayers] ? (
-                      <Eye className="h-4 w-4 text-primary" />
-                    ) : (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="font-medium text-foreground">{layer.name}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {layer.description}
-                  </p>
-                </div>
-                <Switch
-                  checked={activeLayers[layer.id as keyof typeof activeLayers]}
-                  onCheckedChange={() => toggleLayer(layer.id)}
-                />
+                ))}
               </div>
-            ))}
+            </CardContent>
+          </Card>
 
-            <div className="pt-4 border-t border-border">
-              <Button variant="hero" className="w-full">
-                Export Map Data
-              </Button>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="space-y-3 pt-4 border-t border-border">
-              <h4 className="font-semibold text-foreground">Quick Stats</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Healthy Area</span>
-                  <span className="text-primary font-medium">38.1 ha (84%)</span>
+          {/* Current Field Stats */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Live Field Data</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Field Area</span>
+                  <span className="text-sm font-medium">45.2 ha</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Stressed Area</span>
-                  <span className="text-orange-500 font-medium">5.2 ha (12%)</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Avg NDVI</span>
+                  <span className="text-sm font-medium text-green-600">0.72</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Critical Area</span>
-                  <span className="text-destructive font-medium">1.9 ha (4%)</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Risk Areas</span>
+                  <span className="text-sm font-medium text-orange-600">2 zones</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Last Updated</span>
+                  <span className="text-sm font-medium">2 min ago</span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* Field Alerts */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Active Alerts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <div>
+                    <p className="text-xs font-medium">Irrigation needed</p>
+                    <p className="text-xs text-muted-foreground">Sector A moisture low</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <div>
+                    <p className="text-xs font-medium">Nutrient deficiency</p>
+                    <p className="text-xs text-muted-foreground">Eastern boundary</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MapViewer;
+        <div className="w-80 space-y-4">
+          {/* Export and Actions */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Map Tools</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ExportActions dataType="map" />
+              <div className="grid grid-cols-1 gap-2">
+                <Button variant="outline" size="sm" className="flex items-center gap-1 text-xs">
+                  Generate Field Report
+                </Button>
+                <Button variant="outline" size="sm" className="flex items-center gap-1 text-xs">
+                  Schedule Field Visit
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Layer Controls */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center space-x-2">
+                <Layers className="h-4 w-4" />
+                <span>Data Layers</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {layers.map((layer) => (
+                  <div key={layer.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: layer.color }}
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{layer.name}</p>
+                        <p className="text-xs text-muted-foreground">{layer.description}</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={activeLayers[layer.id as keyof typeof activeLayers]}
+                      onCheckedChange={() => toggleLayer(layer.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Current Field Stats */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Live Field Data</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Field Area</span>
+                  <span className="text-sm font-medium">45.2 ha</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Avg NDVI</span>
+                  <span className="text-sm font-medium text-green-600">0.72</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Risk Areas</span>
+                  <span className="text-sm font-medium text-orange-600">2 zones</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Last Updated</span>
+                  <span className="text-sm font-medium">2 min ago</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Field Alerts */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle className="text-sm">Active Alerts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <div>
+                    <p className="text-xs font-medium">Irrigation needed</p>
+                    <p className="text-xs text-muted-foreground">Sector A moisture low</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <div>
+                    <p className="text-xs font-medium">Nutrient deficiency</p>
+                    <p className="text-xs text-muted-foreground">Eastern boundary</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ExportActions from '@/components/actions/ExportActions';
+import ActionScheduler from '@/components/actions/ActionScheduler';
 
 interface TrendPrediction {
   predicted_ndvi: { value: number; change_percent: number; confidence: number };
@@ -117,6 +119,7 @@ const TrendsPanel = () => {
           )}
         </div>
         <div className="flex gap-2">
+          <ExportActions dataType="trends" currentData={predictions} />
           <Button 
             variant="outline" 
             size="sm"
@@ -322,6 +325,22 @@ const TrendsPanel = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Action Scheduler */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Action Planning
+          </CardTitle>
+          <CardDescription>
+            Schedule actions based on AI trend predictions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ActionScheduler />
+        </CardContent>
+      </Card>
     </div>
   );
 };
