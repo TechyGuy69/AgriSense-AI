@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -171,36 +171,38 @@ serve(async (req) => {
       }`;
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-      }),
-    });
+    if (!geminiApiKey) {
+      throw new Error('Missing GEMINI_API_KEY secret');
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+          ]
+        })
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    const aiText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-    console.log('AI Response:', aiResponse);
+    console.log('AI Response:', aiText);
 
-    // Parse the AI response as JSON
-    let parsedResponse;
+    // Attempt to parse JSON from the AI text
+    let parsedResponse: any;
     try {
-      parsedResponse = JSON.parse(aiResponse);
+      const match = aiText.match(/```json\s*([\s\S]*?)```/i) || aiText.match(/\{[\s\S]*\}$/);
+      const jsonStr = match ? (match[1] ?? match[0]) : aiText;
+      parsedResponse = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
       throw new Error('Invalid JSON response from AI model');
@@ -212,7 +214,7 @@ serve(async (req) => {
       generated_at: new Date().toISOString(),
       prediction_type: predictionType,
       timeframe,
-      model_version: 'gpt-4.1-2025-04-14',
+      model_version: 'gemini-1.5-flash',
       confidence_level: 'high'
     };
 
