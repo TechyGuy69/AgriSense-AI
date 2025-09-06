@@ -25,7 +25,7 @@ const Header = ({ activeSection, onSectionChange }: HeaderProps) => {
           {/* Logo */}
           <div className="flex items-center space-x-3">
             <img 
-              src="/lovable-uploads/7d3133b9-ff29-4201-8332-81b0f32ee47d.png" 
+              src="/lovable-uploads/aa23e50a-6cf6-455b-8c47-3a7764ee4c6c.png" 
               alt="AgriSense AI" 
               className="h-10 w-10 object-contain"
             />
