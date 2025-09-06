@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Map, Layers, Eye, EyeOff, Download, Satellite, MapPin, Navigation, Crosshair, Mountain } from 'lucide-react';
+import { Map, Layers, Eye, Download, Satellite, MapPin, Navigation, Crosshair, Mountain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
 import { Loader } from '@googlemaps/js-api-loader';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +44,6 @@ const MapViewer = () => {
   ];
 
   const createMapOverlays = (google: any, map: any) => {
-    // Field boundary polygon (always visible for RGB)
     const fieldArea = new google.maps.Polygon({
       paths: fieldPolygon,
       strokeColor: '#22c55e',
@@ -55,7 +53,6 @@ const MapViewer = () => {
       fillOpacity: 0.15,
     });
     
-    // NDVI overlay (green gradient)
     const ndviArea = new google.maps.Polygon({
       paths: fieldPolygon,
       strokeColor: '#16a34a',
@@ -65,7 +62,6 @@ const MapViewer = () => {
       fillOpacity: 0.4,
     });
 
-    // Stress heatmap rectangles
     const stressZones = [
       new google.maps.Rectangle({
         bounds: { north: 40.7840, south: 40.7835, east: -73.9700, west: -73.9710 },
@@ -81,7 +77,6 @@ const MapViewer = () => {
       }),
     ];
 
-    // Confidence overlay (purple tint)
     const confidenceArea = new google.maps.Polygon({
       paths: fieldPolygon,
       strokeColor: '#8b5cf6',
@@ -91,7 +86,6 @@ const MapViewer = () => {
       fillOpacity: 0.2,
     });
 
-    // Alert markers
     const alertMarkers = [
       new google.maps.Marker({
         position: { lat: 40.7837, lng: -73.9705 },
@@ -121,7 +115,6 @@ const MapViewer = () => {
       }),
     ];
 
-    // Store overlays for layer control
     overlaysRef.current = {
       rgb: fieldArea,
       ndvi: ndviArea,
@@ -130,7 +123,6 @@ const MapViewer = () => {
       alerts: alertMarkers,
     };
 
-    // Set initial visibility based on active layers
     updateLayerVisibility();
   };
 
@@ -142,18 +134,15 @@ const MapViewer = () => {
       const overlay = overlaysRef.current[layerId];
 
       if (Array.isArray(overlay)) {
-        // Handle arrays (like stress zones or alert markers)
         overlay.forEach((item: any) => {
           item.setMap(isActive ? googleMapRef.current : null);
         });
       } else {
-        // Handle single overlays
         overlay.setMap(isActive ? googleMapRef.current : null);
       }
     });
   };
 
-  // Get user's current location
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       toast({
@@ -177,12 +166,10 @@ const MapViewer = () => {
           googleMapRef.current.setCenter(location);
           googleMapRef.current.setZoom(15);
           
-          // Remove existing user location marker
           if (userLocationMarker.current) {
             userLocationMarker.current.setMap(null);
           }
           
-          // Add new user location marker
           userLocationMarker.current = new (window as any).google.maps.Marker({
             position: location,
             map: googleMapRef.current,
@@ -232,7 +219,6 @@ const MapViewer = () => {
     );
   };
 
-  // Start watching user's location
   const startLocationTracking = () => {
     if (!navigator.geolocation) {
       toast({
@@ -292,7 +278,6 @@ const MapViewer = () => {
     });
   };
 
-  // Stop watching user's location
   const stopLocationTracking = () => {
     if (watchId.current) {
       navigator.geolocation.clearWatch(watchId.current);
@@ -308,7 +293,6 @@ const MapViewer = () => {
   useEffect(() => {
     const initializeMap = async () => {
       try {
-        // Get API key from Supabase secrets
         const { data, error } = await supabase.functions.invoke('get-maps-key');
         if (error) throw error;
         
@@ -335,7 +319,6 @@ const MapViewer = () => {
             fullscreenControl: false,
           });
 
-          // Create overlays
           createMapOverlays(google, map);
           
           googleMapRef.current = map;
@@ -354,7 +337,6 @@ const MapViewer = () => {
     initializeMap();
   }, [mapType, toast]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (watchId.current) {
@@ -363,7 +345,6 @@ const MapViewer = () => {
     };
   }, []);
 
-  // Update layer visibility when activeLayers changes
   useEffect(() => {
     updateLayerVisibility();
   }, [activeLayers]);
@@ -426,14 +407,11 @@ const MapViewer = () => {
         </div>
       </div>
 
-
       <div className="flex gap-4 h-[calc(100vh-200px)]">
         {/* Map Area */}
         <div className="flex-1 relative bg-muted rounded-lg overflow-hidden">
-          {/* Google Maps Container */}
           <div ref={mapRef} className="w-full h-full" />
           
-          {/* Loading overlay */}
           {!mapLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <div className="text-center">
@@ -528,115 +506,6 @@ const MapViewer = () => {
         </div>
 
         {/* Layer Control Panel */}
-        <div className="w-80 space-y-4">
-          {/* Export and Actions */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-sm">Map Tools</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <ExportActions dataType="map" />
-              <div className="grid grid-cols-1 gap-2">
-                <Button variant="outline" size="sm" className="flex items-center gap-1 text-xs">
-                  Generate Field Report
-                </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-1 text-xs">
-                  Schedule Field Visit
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Layer Controls */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center space-x-2">
-                <Layers className="h-4 w-4" />
-                <span>Data Layers</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {layers.map((layer) => (
-                  <div key={layer.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: layer.color }}
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{layer.name}</p>
-                        <p className="text-xs text-muted-foreground">{layer.description}</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={activeLayers[layer.id as keyof typeof activeLayers]}
-                      onCheckedChange={() => toggleLayer(layer.id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Current Field Stats */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-sm">Live Field Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Field Area</span>
-                  <span className="text-sm font-medium">45.2 ha</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Avg NDVI</span>
-                  <span className="text-sm font-medium text-green-600">0.72</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Risk Areas</span>
-                  <span className="text-sm font-medium text-orange-600">2 zones</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Last Updated</span>
-                  <span className="text-sm font-medium">2 min ago</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Field Alerts */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-sm">Active Alerts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <div>
-                    <p className="text-xs font-medium">Irrigation needed</p>
-                    <p className="text-xs text-muted-foreground">Sector A moisture low</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <div>
-                    <p className="text-xs font-medium">Nutrient deficiency</p>
-                    <p className="text-xs text-muted-foreground">Eastern boundary</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default MapViewer;
         <div className="w-80 space-y-4">
           {/* Export and Actions */}
           <Card className="shadow-card">
