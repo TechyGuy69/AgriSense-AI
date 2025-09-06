@@ -23,11 +23,16 @@ const Header = ({ activeSection, onSectionChange }: HeaderProps) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="bg-gradient-hero p-2 rounded-lg">
-              <Leaf className="h-6 w-6 text-primary-foreground" />
+          <div className="flex items-center space-x-3">
+            <img 
+              src="/lovable-uploads/7d3133b9-ff29-4201-8332-81b0f32ee47d.png" 
+              alt="AgriSense AI" 
+              className="h-10 w-10 object-contain"
+            />
+            <div className="flex flex-col">
+              <span className="text-xl font-bold text-foreground">AgriSense</span>
+              <span className="text-sm font-semibold text-destructive -mt-1">AI</span>
             </div>
-            <span className="text-xl font-bold text-foreground">CropRisk</span>
           </div>
 
           {/* Desktop Navigation */}

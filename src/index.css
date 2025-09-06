@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* CropRisk Agricultural Design System - Earth tones with vibrant green accents */
+/* AgriSense AI Design System - Natural earth tones with vibrant tech accents */
 
 @layer base {
   :root {
@@ -15,42 +15,51 @@
     --popover: 25 10% 100%;
     --popover-foreground: 25 25% 12%;
 
-    --primary: 110 70% 35%;
+    /* Primary green from logo - vibrant leaf green */
+    --primary: 120 60% 40%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 110 70% 45%;
+    --primary-glow: 120 70% 50%;
 
-    --secondary: 25 15% 92%;
-    --secondary-foreground: 25 25% 15%;
+    /* Secondary blue from logo - tech water blue */
+    --secondary: 200 80% 45%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 25 10% 95%;
     --muted-foreground: 25 15% 45%;
 
-    --accent: 110 40% 88%;
+    /* Accent from logo - lighter green */
+    --accent: 110 60% 70%;
     --accent-foreground: 25 25% 15%;
 
-    --destructive: 0 84% 60%;
+    /* Red accent from logo for alerts/pest indicators */
+    --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 25 15% 88%;
     --input: 25 10% 95%;
-    --ring: 110 70% 35%;
+    --ring: 120 60% 40%;
 
     --radius: 0.5rem;
 
-    /* Agricultural theme colors */
-    --earth: 25 35% 65%;
-    --earth-light: 25 25% 85%;
-    --crop: 60 60% 45%;
-    --crop-light: 60 40% 75%;
+    /* AgriSense theme colors from logo */
+    --earth: 25 40% 50%;        /* Brown earth from logo */
+    --earth-light: 25 30% 70%;
+    --crop: 110 70% 45%;        /* Vibrant green from leaves */
+    --crop-light: 110 50% 75%;
+    --water: 200 80% 45%;       /* Blue tech elements */
+    --water-light: 200 60% 70%;
+    --pest: 0 75% 55%;          /* Red pest indicator */
     
-    /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    /* Gradients inspired by logo */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--water)));
     --gradient-earth: linear-gradient(135deg, hsl(var(--earth)), hsl(var(--crop)));
+    --gradient-tech: linear-gradient(135deg, hsl(var(--water)), hsl(var(--primary-glow)));
     --gradient-card: linear-gradient(145deg, hsl(var(--background)), hsl(var(--muted)));
     
-    /* Shadows */
+    /* Shadows with AgriSense brand colors */
     --shadow-elegant: 0 10px 30px -10px hsl(var(--primary) / 0.2);
     --shadow-card: 0 4px 12px -2px hsl(var(--foreground) / 0.1);
+    --shadow-tech: 0 8px 25px -8px hsl(var(--water) / 0.3);
     
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -66,31 +75,34 @@
     --popover: 25 15% 10%;
     --popover-foreground: 25 10% 95%;
 
-    --primary: 110 70% 50%;
+    --primary: 120 60% 50%;
     --primary-foreground: 25 15% 8%;
-    --primary-glow: 110 70% 60%;
+    --primary-glow: 120 70% 60%;
 
-    --secondary: 25 15% 15%;
-    --secondary-foreground: 25 10% 85%;
+    --secondary: 200 70% 50%;
+    --secondary-foreground: 25 15% 8%;
 
     --muted: 25 15% 12%;
     --muted-foreground: 25 10% 55%;
 
-    --accent: 110 40% 20%;
+    --accent: 110 50% 30%;
     --accent-foreground: 25 10% 85%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 75% 60%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 25 15% 18%;
     --input: 25 15% 15%;
-    --ring: 110 70% 50%;
+    --ring: 120 60% 50%;
     
-    /* Dark theme agricultural colors */
-    --earth: 25 25% 35%;
-    --earth-light: 25 20% 45%;
-    --crop: 60 50% 35%;
-    --crop-light: 60 40% 55%;
+    /* Dark theme AgriSense colors */
+    --earth: 25 30% 25%;
+    --earth-light: 25 25% 35%;
+    --crop: 110 60% 40%;
+    --crop-light: 110 50% 60%;
+    --water: 200 70% 40%;
+    --water-light: 200 60% 60%;
+    --pest: 0 75% 60%;
   }
 }
 
