@@ -419,8 +419,9 @@ const ActionScheduler = ({ defaultAction }: ActionSchedulerProps) => {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center gap-2">
+                {/* ✅ Fixed Mark Complete position */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-4 gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     {action.notifications && (
                       <Badge variant="outline" className="text-xs">
                         <Bell className="h-3 w-3 mr-1" />
@@ -438,7 +439,7 @@ const ActionScheduler = ({ defaultAction }: ActionSchedulerProps) => {
                     <Button 
                       size="sm" 
                       onClick={() => markAsCompleted(action.id)}
-                      className="flex items-center gap-1"
+                      className="flex items-center gap-1 self-start md:self-auto"
                     >
                       <CheckCircle className="h-3 w-3" />
                       Mark Complete
