@@ -1,14 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Map,
   Layers,
-  Eye,
-  Download,
   Satellite,
-  MapPin,
-  Navigation,
   Crosshair,
-  Mountain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +15,7 @@ import ExportActions from "@/components/actions/ExportActions";
 const MapViewer = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
-  const userLocationMarker = useRef<any>(null);
-  const watchId = useRef<number | null>(null);
-  const overlaysRef = useRef<any>({});
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapType, setMapType] = useState<"satellite" | "hybrid" | "terrain">("satellite");
   const { toast } = useToast();
 
@@ -38,10 +28,10 @@ const MapViewer = () => {
   });
 
   const layers = [
-    { id: "rgb", name: "RGB Imagery", description: "True color satellite imagery", color: "#3b82f6" },
+    { id: "rgb", name: "RGB Imagery", description: "True color imagery", color: "#3b82f6" },
     { id: "ndvi", name: "NDVI", description: "Vegetation index", color: "#22c55e" },
     { id: "stress", name: "Stress Heatmap", description: "Crop stress zones", color: "#ef4444" },
-    { id: "confidence", name: "Confidence", description: "AI confidence areas", color: "#8b5cf6" },
+    { id: "confidence", name: "Confidence", description: "AI prediction confidence", color: "#8b5cf6" },
     { id: "alerts", name: "Alerts", description: "Field warnings", color: "#f59e0b" },
   ];
 
@@ -58,7 +48,7 @@ const MapViewer = () => {
         const loader = new Loader({
           apiKey,
           version: "weekly",
-          libraries: ["geometry", "drawing", "places", "marker"],
+          libraries: ["geometry", "places"],
         });
 
         const google = await loader.load();
@@ -90,12 +80,24 @@ const MapViewer = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition((pos) => {
       const location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      setUserLocation(location);
       if (googleMapRef.current) {
         googleMapRef.current.setCenter(location);
         googleMapRef.current.setZoom(15);
+        new google.maps.Marker({
+          position: location,
+          map: googleMapRef.current,
+          title: "You are here",
+        });
       }
     });
+  };
+
+  // 🔹 Change map type
+  const changeMapType = (type: "satellite" | "hybrid" | "terrain") => {
+    setMapType(type);
+    if (googleMapRef.current) {
+      googleMapRef.current.setMapTypeId(type);
+    }
   };
 
   // 🔹 Toggle layers
@@ -117,7 +119,8 @@ const MapViewer = () => {
       <div className="flex flex-col lg:flex-row gap-4 h-auto lg:h-[calc(100vh-200px)]">
         {/* Map Section */}
         <div className="flex-1 relative bg-muted rounded-lg overflow-hidden min-h-[300px] lg:min-h-full">
-          <div ref={mapRef} className="w-full h-full" />
+          {/* ✅ Force map div to always fill parent */}
+          <div ref={mapRef} className="absolute inset-0 w-full h-full" />
           {!mapLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <p className="text-sm text-muted-foreground">Loading field map...</p>
@@ -125,7 +128,7 @@ const MapViewer = () => {
           )}
         </div>
 
-        {/* Right Panel (collapsible on mobile, fixed on desktop) */}
+        {/* Right Panel */}
         <div className="w-full lg:w-80 space-y-4">
           {/* Quick Actions */}
           <Card className="shadow-card">
@@ -144,7 +147,7 @@ const MapViewer = () => {
           </Card>
 
           {/* Layers */}
-          <Card className="shadow-card">
+          <Card id="layers-panel" className="shadow-card">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
                 <Layers className="h-4 w-4" /> Data Layers
@@ -207,15 +210,17 @@ const MapViewer = () => {
         </div>
       </div>
 
-      {/* Mobile Sticky Control Bar */}
-      <div className="fixed bottom-2 left-2 right-2 flex justify-around bg-background/95 backdrop-blur p-2 rounded-xl shadow-lg border lg:hidden">
-        <Button size="sm" onClick={getCurrentLocation}>
+      {/* ✅ Mobile Sticky Control Bar */}
+      <div className="fixed bottom-2 left-2 right-2 z-50 flex justify-around gap-2 bg-background/95 backdrop-blur p-2 rounded-xl shadow-lg border lg:hidden pb-[env(safe-area-inset-bottom)]">
+        <Button size="sm" onClick={getCurrentLocation} className="flex-1">
           <Crosshair className="h-4 w-4 mr-1" /> Location
         </Button>
-        <Button size="sm" onClick={() => setMapType("satellite")}>
+        <Button size="sm" onClick={() => changeMapType("satellite")} className="flex-1">
           <Satellite className="h-4 w-4 mr-1" /> Type
         </Button>
-        <Button size="sm">
+        <Button size="sm" className="flex-1" onClick={() => {
+          document.getElementById("layers-panel")?.scrollIntoView({ behavior: "smooth" });
+        }}>
           <Layers className="h-4 w-4 mr-1" /> Layers
         </Button>
       </div>
