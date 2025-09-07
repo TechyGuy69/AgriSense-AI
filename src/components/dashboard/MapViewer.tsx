@@ -1,9 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import {
-  Layers,
-  Satellite,
-  Crosshair,
-} from "lucide-react";
+import { Layers, Satellite, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -23,10 +19,13 @@ const MapViewer = () => {
   const [activeLayers, setActiveLayers] = useState({
     rgb: true,
     ndvi: false,
-    stress: true,
+    stress: false,
     confidence: false,
-    alerts: true,
+    alerts: false,
   });
+
+  // Store overlays
+  const overlaysRef = useRef<{ [key: string]: any }>({});
 
   const layers = [
     { id: "rgb", name: "RGB Imagery", description: "True color imagery", color: "#3b82f6" },
@@ -36,7 +35,7 @@ const MapViewer = () => {
     { id: "alerts", name: "Alerts", description: "Field warnings", color: "#f59e0b" },
   ];
 
-  // 🔹 Map initialization with fallback
+  // 🔹 Initialize Map
   useEffect(() => {
     const initializeMap = async () => {
       try {
@@ -49,21 +48,15 @@ const MapViewer = () => {
         const loader = new Loader({
           apiKey,
           version: "weekly",
-          libraries: ["geometry", "places"],
-          channel: "selfhosted",
+          libraries: ["geometry", "places", "visualization"],
         });
-
-        // Block Google's gen_204 ping
-        (window as any).google = (window as any).google || {};
-        (window as any).google.maps = (window as any).google.maps || {};
-        (window as any).google.maps.Load = () => {};
 
         const google = await loader.load();
 
         if (mapRef.current) {
           googleMapRef.current = new google.maps.Map(mapRef.current, {
-            center: { lat: 40.7841, lng: -73.9697 },
-            zoom: 16,
+            center: { lat: 12.9716, lng: 77.5946 }, // Bangalore as default
+            zoom: 14,
             mapTypeId: mapType,
             mapTypeControl: false,
             streetViewControl: false,
@@ -72,47 +65,113 @@ const MapViewer = () => {
           setMapLoaded(true);
         }
       } catch (err) {
-        console.error("Google Maps failed, falling back to OSM:", err);
+        console.error("Google Maps failed:", err);
         setMapError(true);
         toast({
-          title: "Map fallback",
+          title: "Map Fallback",
           description: "Google Maps blocked. Showing OpenStreetMap instead.",
-          variant: "default",
         });
       }
     };
-
     initializeMap();
   }, [mapType, toast]);
 
-  // 🔹 Get current location
+  // 🔹 Location button
   const getCurrentLocation = () => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      alert("Geolocation not supported");
+      return;
+    }
     navigator.geolocation.getCurrentPosition((pos) => {
       const location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       if (googleMapRef.current) {
         googleMapRef.current.setCenter(location);
-        googleMapRef.current.setZoom(15);
+        googleMapRef.current.setZoom(16);
         new google.maps.Marker({
           position: location,
           map: googleMapRef.current,
-          title: "You are here",
+          title: "Your Location",
         });
       }
     });
   };
 
-  // 🔹 Change map type
-  const changeMapType = (type: "satellite" | "hybrid" | "terrain") => {
-    setMapType(type);
+  // 🔹 Map type toggle
+  const changeMapType = () => {
+    const order: ("satellite" | "hybrid" | "terrain")[] = ["satellite", "hybrid", "terrain"];
+    const nextIndex = (order.indexOf(mapType) + 1) % order.length;
+    const nextType = order[nextIndex];
+    setMapType(nextType);
     if (googleMapRef.current) {
-      googleMapRef.current.setMapTypeId(type);
+      googleMapRef.current.setMapTypeId(nextType);
     }
   };
 
-  // 🔹 Toggle layers
+  // 🔹 Toggle Layers
   const toggleLayer = (id: string) => {
-    setActiveLayers((prev) => ({ ...prev, [id]: !prev[id as keyof typeof prev] }));
+    setActiveLayers((prev) => {
+      const updated = { ...prev, [id]: !prev[id as keyof typeof prev] };
+
+      if (!googleMapRef.current) return updated;
+
+      // Remove if exists
+      if (overlaysRef.current[id]) {
+        overlaysRef.current[id].setMap(null);
+        overlaysRef.current[id] = null;
+      }
+
+      // Add overlay if enabled
+      if (updated[id]) {
+        const bounds = {
+          north: 12.975,
+          south: 12.968,
+          east: 77.600,
+          west: 77.590,
+        };
+
+        if (id === "ndvi") {
+          overlaysRef.current[id] = new google.maps.Rectangle({
+            bounds,
+            fillColor: "#22c55e",
+            fillOpacity: 0.35,
+            strokeWeight: 0,
+            map: googleMapRef.current,
+          });
+        }
+
+        if (id === "stress") {
+          overlaysRef.current[id] = new google.maps.Circle({
+            center: { lat: 12.9716, lng: 77.5946 },
+            radius: 300,
+            fillColor: "#ef4444",
+            fillOpacity: 0.4,
+            strokeWeight: 0,
+            map: googleMapRef.current,
+          });
+        }
+
+        if (id === "confidence") {
+          overlaysRef.current[id] = new google.maps.Rectangle({
+            bounds,
+            fillColor: "#8b5cf6",
+            fillOpacity: 0.25,
+            strokeWeight: 1,
+            strokeColor: "#8b5cf6",
+            map: googleMapRef.current,
+          });
+        }
+
+        if (id === "alerts") {
+          overlaysRef.current[id] = new google.maps.Marker({
+            position: { lat: 12.973, lng: 77.596 },
+            map: googleMapRef.current,
+            title: "🚨 Irrigation needed",
+          });
+        }
+      }
+
+      return updated;
+    });
   };
 
   return (
@@ -129,7 +188,6 @@ const MapViewer = () => {
       <div className="flex flex-col lg:flex-row gap-4 h-auto lg:h-[calc(100vh-200px)]">
         {/* Map Section */}
         <div className="flex-1 relative bg-muted rounded-lg overflow-hidden min-h-[300px] lg:min-h-full">
-          {/* ✅ Show Google Maps OR OSM fallback */}
           {!mapError ? (
             <div ref={mapRef} className="absolute inset-0 w-full h-full" />
           ) : (
@@ -138,12 +196,6 @@ const MapViewer = () => {
               className="absolute inset-0 w-full h-full rounded-lg border-0"
               loading="lazy"
             />
-          )}
-
-          {!mapLoaded && !mapError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted">
-              <p className="text-sm text-muted-foreground">Loading field map...</p>
-            </div>
           )}
         </div>
 
@@ -176,10 +228,7 @@ const MapViewer = () => {
               {layers.map((l) => (
                 <div key={l.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: l.color }}
-                    />
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: l.color }} />
                     <span className="text-xs sm:text-sm">{l.name}</span>
                   </div>
                   <Switch
@@ -190,42 +239,6 @@ const MapViewer = () => {
               ))}
             </CardContent>
           </Card>
-
-          {/* Field Stats */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-sm">Live Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>Field Area</span>
-                <span className="font-medium">45.2 ha</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Avg NDVI</span>
-                <span className="font-medium text-green-600">0.72</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Risk Zones</span>
-                <span className="font-medium text-orange-600">2</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Alerts */}
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-sm">Active Alerts</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-xs">
-              <div className="p-2 rounded bg-orange-50 dark:bg-orange-900/20">
-                🚨 Irrigation needed — Sector A
-              </div>
-              <div className="p-2 rounded bg-yellow-50 dark:bg-yellow-900/20">
-                ⚠️ Nutrient deficiency — East Field
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
@@ -234,7 +247,7 @@ const MapViewer = () => {
         <Button size="sm" onClick={getCurrentLocation} className="flex-1">
           <Crosshair className="h-4 w-4 mr-1" /> Location
         </Button>
-        <Button size="sm" onClick={() => changeMapType("satellite")} className="flex-1">
+        <Button size="sm" onClick={changeMapType} className="flex-1">
           <Satellite className="h-4 w-4 mr-1" /> Type
         </Button>
         <Button size="sm" className="flex-1" onClick={() => {
