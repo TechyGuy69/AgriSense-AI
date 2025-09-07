@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Calendar, BarChart3, RefreshCw, Brain } from 'lucide-react';
+import { TrendingUp, TrendingDown, Calendar, RefreshCw, Brain } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,6 @@ const TrendsPanel = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { toast } = useToast();
 
-  // Simulate current field data (in real app, this would come from sensors/API)
   const getCurrentFieldData = () => ({
     ndvi: 0.72,
     gndvi: 0.68,
@@ -49,20 +48,14 @@ const TrendsPanel = () => {
     setIsLoading(true);
     try {
       const fieldData = getCurrentFieldData();
-      
       const { data, error } = await supabase.functions.invoke('ai-crop-predictions', {
-        body: {
-          fieldData,
-          predictionType: 'trends',
-          timeframe
-        }
+        body: { fieldData, predictionType: 'trends', timeframe }
       });
 
       if (error) throw error;
-
       setPredictions(data);
       setLastUpdated(new Date());
-      
+
       toast({
         title: 'AI Predictions Updated',
         description: `Generated new trends analysis for ${timeframe}`,
@@ -79,7 +72,6 @@ const TrendsPanel = () => {
     }
   };
 
-  // Auto-refresh predictions every 5 minutes
   useEffect(() => {
     fetchAIPredictions();
     const interval = setInterval(() => fetchAIPredictions(), 5 * 60 * 1000);
@@ -87,11 +79,8 @@ const TrendsPanel = () => {
   }, []);
 
   const formatTrendIcon = (changePercent: number) => {
-    if (changePercent > 0) {
-      return <TrendingUp className="h-4 w-4 mr-1" />;
-    } else if (changePercent < 0) {
-      return <TrendingDown className="h-4 w-4 mr-1" />;
-    }
+    if (changePercent > 0) return <TrendingUp className="h-4 w-4 mr-1" />;
+    if (changePercent < 0) return <TrendingDown className="h-4 w-4 mr-1" />;
     return null;
   };
 
@@ -102,14 +91,15 @@ const TrendsPanel = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
             AI-Powered Crop Trends
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm sm:text-base">
             Live predictions and time-series analysis powered by machine learning
           </p>
           {lastUpdated && (
@@ -118,10 +108,10 @@ const TrendsPanel = () => {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <ExportActions dataType="trends" currentData={predictions} />
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => fetchAIPredictions('30 days')}
             disabled={isLoading}
@@ -129,8 +119,8 @@ const TrendsPanel = () => {
             <Calendar className="h-4 w-4 mr-2" />
             30 Day Forecast
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => fetchAIPredictions('7 days')}
             disabled={isLoading}
@@ -141,14 +131,15 @@ const TrendsPanel = () => {
         </div>
       </div>
 
-      {/* AI-Powered Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* NDVI */}
         <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Predicted NDVI</p>
-                <p className="text-2xl font-bold text-primary">
+                <p className="text-xl sm:text-2xl font-bold text-primary">
                   {predictions?.predicted_ndvi.value.toFixed(2) || '0.72'}
                 </p>
                 {predictions && (
@@ -167,12 +158,13 @@ const TrendsPanel = () => {
           </CardContent>
         </Card>
 
+        {/* GNDVI */}
         <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Predicted GNDVI</p>
-                <p className="text-2xl font-bold text-crop">
+                <p className="text-xl sm:text-2xl font-bold text-crop">
                   {predictions?.predicted_gndvi.value.toFixed(2) || '0.68'}
                 </p>
                 {predictions && (
@@ -191,12 +183,13 @@ const TrendsPanel = () => {
           </CardContent>
         </Card>
 
+        {/* VPD */}
         <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Predicted VPD</p>
-                <p className="text-2xl font-bold text-earth">
+                <p className="text-xl sm:text-2xl font-bold text-earth">
                   {predictions?.predicted_vpd.value.toFixed(1) || '1.8'} kPa
                 </p>
                 {predictions && (
@@ -215,12 +208,13 @@ const TrendsPanel = () => {
           </CardContent>
         </Card>
 
+        {/* Risk Score */}
         <Card className="shadow-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Risk Score</p>
-                <p className="text-2xl font-bold text-foreground">
+                <p className="text-xl sm:text-2xl font-bold text-foreground">
                   {predictions?.risk_score.level || 'Low'}
                 </p>
                 {predictions && (
@@ -251,7 +245,7 @@ const TrendsPanel = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 bg-gradient-card rounded-lg">
                 <h4 className="font-semibold text-foreground mb-2">Temperature Range</h4>
                 <p className="text-lg font-bold text-primary">
@@ -266,7 +260,7 @@ const TrendsPanel = () => {
               </div>
               <div className="p-4 bg-gradient-card rounded-lg">
                 <h4 className="font-semibold text-foreground mb-2">Irrigation Alert</h4>
-                <Badge 
+                <Badge
                   variant={predictions.environmental_forecast.irrigation_needed ? "destructive" : "outline"}
                   className="text-sm"
                 >
@@ -288,7 +282,7 @@ const TrendsPanel = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {predictions.trend_summary.positive_trends.length > 0 && (
                 <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                   <h4 className="font-semibold text-primary mb-2">Positive Trends</h4>
@@ -299,7 +293,7 @@ const TrendsPanel = () => {
                   </ul>
                 </div>
               )}
-              
+
               {predictions.trend_summary.concerning_trends.length > 0 && (
                 <div className="p-4 bg-orange-100 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
                   <h4 className="font-semibold text-orange-700 dark:text-orange-400 mb-2">Monitor Closely</h4>
@@ -310,7 +304,7 @@ const TrendsPanel = () => {
                   </ul>
                 </div>
               )}
-              
+
               {predictions.trend_summary.stable_conditions.length > 0 && (
                 <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                   <h4 className="font-semibold text-green-700 dark:text-green-400 mb-2">Stable Conditions</h4>
