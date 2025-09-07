@@ -14,7 +14,7 @@ const Sidebar = React.forwardRef<
     <aside
       ref={ref}
       className={cn(
-        "group flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 data-[collapsible=icon]:w-16",
+        "group relative flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-all duration-300 data-[collapsible=icon]:w-16",
         className
       )}
       {...props}
@@ -42,15 +42,18 @@ const SidebarContent = React.forwardRef<
   return (
     <div
       ref={ref}
-      className={cn("flex flex-1 flex-col", className)}
+      data-sidebar="content"
+      className={cn("relative flex min-h-0 flex-1 flex-col", className)}
       {...props}
     >
-      {/* ✅ Scrollable navigation area */}
-      <div className="flex-1 overflow-y-auto px-2">{children}</div>
+      {/* ✅ Scrollable menu area with padding so last item isn’t hidden */}
+      <div className="flex-1 overflow-y-auto px-2 pb-24">
+        {children}
+      </div>
 
-      {/* ✅ Sticky bottom always visible */}
-      <div className="sticky bottom-0 bg-sidebar p-2 border-t border-sidebar-border">
-        <div className="flex flex-wrap gap-2">
+      {/* ✅ Sticky floating footer at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 border-t border-sidebar-border bg-sidebar p-2">
+        <div className="flex gap-2">
           <Button variant="outline" size="sm" className="flex-1">
             Location
           </Button>
