@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { Play, CheckCircle, Timer, MapPin, Send } from 'lucide-react';
+import { Play, CheckCircle, Timer, MapPin, Send, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
@@ -35,13 +33,12 @@ interface TakeActionProps {
     actions?: string[];
   };
   variant?: 'button' | 'card';
-  className?: string; // ✅ NEW
+  className?: string;
 }
 
 const TakeAction = ({ action, variant = 'button', className }: TakeActionProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeActions, setActiveActions] = useState<ActionInProgress[]>([]);
-  const [newActionNote, setNewActionNote] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const { toast } = useToast();
 
@@ -96,12 +93,6 @@ const TakeAction = ({ action, variant = 'button', className }: TakeActionProps) 
     toast({ title: 'Action Completed', description: 'Action marked as completed' });
   };
 
-  const updateActionProgress = (actionId: string, step: number) => {
-    setActiveActions(prev =>
-      prev.map(action => (action.id === actionId ? { ...action, currentStep: step } : action))
-    );
-  };
-
   const pauseAction = (actionId: string) => {
     setActiveActions(prev =>
       prev.map(action =>
@@ -120,13 +111,14 @@ const TakeAction = ({ action, variant = 'button', className }: TakeActionProps) 
 
   const getProgress = (current: number, total: number) => Math.round((current / total) * 100);
 
+  // --- Variant: Button ---
   if (variant === 'button') {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
           <Button
             variant={action?.urgency === 'urgent' ? 'default' : 'outline'}
-            className={clsx("flex items-center gap-2", className)} // ✅ className applied here
+            className={clsx("flex items-center gap-2", className)}
           >
             <Play className="h-4 w-4" />
             {action?.urgency === 'urgent' ? 'Take Action Now' : 'Start Action'}
@@ -178,8 +170,43 @@ const TakeAction = ({ action, variant = 'button', className }: TakeActionProps) 
     );
   }
 
-  // ✅ keep other logic for 'card' variant
-  return <div className={className}>Card variant not shown here (still works)</div>;
+  // --- Variant: Card ---
+  return (
+    <Card className={clsx("w-full", className)}>
+      <CardHeader>
+        <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <span>{action?.title}</span>
+          <Badge variant="secondary">{action?.priority}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{action?.description}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-2">
+          <Progress value={getProgress(1, 5)} className="sm:w-2/3" />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              size="sm"
+              variant="success"
+              onClick={() => completeAction(action?.title || "")}
+              className="w-full sm:w-auto"
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Mark Complete
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => pauseAction(action?.title || "")}
+              className="w-full sm:w-auto"
+            >
+              <Pause className="mr-2 h-4 w-4" />
+              Pause
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default TakeAction;
