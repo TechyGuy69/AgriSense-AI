@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Menu, X, Leaf, Map, TrendingUp, Lightbulb, Upload } from 'lucide-react';
+import { Menu, X, Map, TrendingUp, Lightbulb, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface HeaderProps {
   activeSection: string;
@@ -22,8 +21,11 @@ const Header = ({ activeSection, onSectionChange }: HeaderProps) => {
     <header className="bg-card border-b border-border shadow-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-3">
+          {/* Logo (clickable to go home/dashboard) */}
+          <div
+            className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition"
+            onClick={() => onSectionChange('dashboard')}
+          >
             <img 
               src="/lovable-uploads/aa23e50a-6cf6-455b-8c47-3a7764ee4c6c.png" 
               alt="AgriSense AI" 
