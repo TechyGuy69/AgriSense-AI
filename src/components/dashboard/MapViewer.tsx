@@ -16,6 +16,7 @@ const MapViewer = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState(false);
   const [mapType, setMapType] = useState<"satellite" | "hybrid" | "terrain">("satellite");
   const { toast } = useToast();
 
@@ -35,7 +36,7 @@ const MapViewer = () => {
     { id: "alerts", name: "Alerts", description: "Field warnings", color: "#f59e0b" },
   ];
 
-  // 🔹 Map initialization
+  // 🔹 Map initialization with fallback
   useEffect(() => {
     const initializeMap = async () => {
       try {
@@ -49,9 +50,16 @@ const MapViewer = () => {
           apiKey,
           version: "weekly",
           libraries: ["geometry", "places"],
+          channel: "selfhosted",
         });
 
+        // Block Google's gen_204 ping
+        (window as any).google = (window as any).google || {};
+        (window as any).google.maps = (window as any).google.maps || {};
+        (window as any).google.maps.Load = () => {};
+
         const google = await loader.load();
+
         if (mapRef.current) {
           googleMapRef.current = new google.maps.Map(mapRef.current, {
             center: { lat: 40.7841, lng: -73.9697 },
@@ -64,14 +72,16 @@ const MapViewer = () => {
           setMapLoaded(true);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Google Maps failed, falling back to OSM:", err);
+        setMapError(true);
         toast({
-          title: "Map error",
-          description: "Could not load Google Maps",
-          variant: "destructive",
+          title: "Map fallback",
+          description: "Google Maps blocked. Showing OpenStreetMap instead.",
+          variant: "default",
         });
       }
     };
+
     initializeMap();
   }, [mapType, toast]);
 
@@ -119,9 +129,18 @@ const MapViewer = () => {
       <div className="flex flex-col lg:flex-row gap-4 h-auto lg:h-[calc(100vh-200px)]">
         {/* Map Section */}
         <div className="flex-1 relative bg-muted rounded-lg overflow-hidden min-h-[300px] lg:min-h-full">
-          {/* ✅ Force map div to always fill parent */}
-          <div ref={mapRef} className="absolute inset-0 w-full h-full" />
-          {!mapLoaded && (
+          {/* ✅ Show Google Maps OR OSM fallback */}
+          {!mapError ? (
+            <div ref={mapRef} className="absolute inset-0 w-full h-full" />
+          ) : (
+            <iframe
+              src="https://www.openstreetmap.org/export/embed.html?bbox=77.58,12.96,77.62,13.00&layer=mapnik"
+              className="absolute inset-0 w-full h-full rounded-lg border-0"
+              loading="lazy"
+            />
+          )}
+
+          {!mapLoaded && !mapError && (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <p className="text-sm text-muted-foreground">Loading field map...</p>
             </div>
