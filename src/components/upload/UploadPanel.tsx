@@ -128,24 +128,26 @@ const UploadPanel = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
             Upload Field Data
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Upload satellite imagery and sensor data for analysis
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={loadDemoData}>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button variant="outline" onClick={loadDemoData} className="w-full sm:w-auto">
             Load Demo Data
           </Button>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* Upload & File List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Upload Area */}
         <Card className="shadow-card">
           <CardHeader>
@@ -159,7 +161,7 @@ const UploadPanel = () => {
           </CardHeader>
           <CardContent>
             <div
-              className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`relative border-2 border-dashed rounded-lg p-6 sm:p-8 text-center transition-colors ${
                 dragActive
                   ? 'border-primary bg-primary/5'
                   : 'border-border hover:border-primary/50'
@@ -169,12 +171,12 @@ const UploadPanel = () => {
               onDragOver={handleDrag}
               onDrop={handleDrop}
             >
-              <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <Upload className="h-10 sm:h-12 w-10 sm:w-12 text-muted-foreground mx-auto mb-4" />
               <div className="space-y-2">
-                <p className="text-foreground font-medium">
+                <p className="text-foreground font-medium text-sm sm:text-base">
                   Drop files here or click to upload
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Supports: GeoTIFF (.tif), ENVI (.hdr, .img), CSV (.csv), Photos (.jpg, .png)
                 </p>
               </div>
@@ -186,7 +188,6 @@ const UploadPanel = () => {
                 onChange={(e) => e.target.files && handleFiles(Array.from(e.target.files))}
               />
             </div>
-
           </CardContent>
         </Card>
 
@@ -209,7 +210,7 @@ const UploadPanel = () => {
                 {uploadedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center space-x-3 p-3 bg-muted rounded-lg"
+                    className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 p-3 bg-muted rounded-lg gap-2 sm:gap-0"
                   >
                     {file.type === 'image' ? (
                       <FileImage className="h-5 w-5 text-earth" />
@@ -219,7 +220,7 @@ const UploadPanel = () => {
                       <FileSpreadsheet className="h-5 w-5 text-crop" />
                     )}
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-foreground">
+                      <p className="text-sm font-medium text-foreground break-words">
                         {file.name}
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -233,7 +234,7 @@ const UploadPanel = () => {
                         variant="outline"
                         onClick={() => analyzePhoto(file.file!)}
                         disabled={photoAnalyzing}
-                        className="text-xs"
+                        className="text-xs w-full sm:w-auto"
                       >
                         <Brain className="h-3 w-3 mr-1" />
                         {photoAnalyzing ? 'Analyzing...' : 'Analyze'}
@@ -257,6 +258,7 @@ const UploadPanel = () => {
         </Card>
       </div>
 
+      {/* AI Result */}
       {aiResult && (
         <Card className="shadow-card">
           <CardHeader>
@@ -271,6 +273,7 @@ const UploadPanel = () => {
         </Card>
       )}
 
+      {/* Photo Result */}
       {photoResult && (
         <Card className="shadow-card">
           <CardHeader>
@@ -294,7 +297,7 @@ const UploadPanel = () => {
           <CardTitle>Supported File Formats</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <h4 className="font-semibold text-foreground mb-2 flex items-center">
                 <FileImage className="h-4 w-4 mr-2 text-earth" />
