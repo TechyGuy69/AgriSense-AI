@@ -147,16 +147,6 @@ const InsightsPanel = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const getIconComponent = (iconType: string) => {
-    switch (iconType) {
-      case 'moisture': return Droplets;
-      case 'temperature': return Thermometer;
-      case 'wind': return Wind;
-      case 'nutrition': return Activity;
-      default: return Droplets;
-    }
-  };
-
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case 'urgent': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
@@ -207,7 +197,7 @@ const InsightsPanel = () => {
         </div>
       </div>
 
-      {/* Action Cards - with fixed button layout */}
+      {/* Action Cards - fixed button layout */}
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
@@ -238,14 +228,27 @@ const InsightsPanel = () => {
                   </div>
                 </div>
                 
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">{card.title}</h4>
-                  <p className="text-sm text-muted-foreground">{card.description}</p>
-                  {aiInsights && 'expected_outcome' in card && (
-                    <p className="text-xs text-primary mt-1">
-                      Expected outcome: {card.expected_outcome}
-                    </p>
-                  )}
+                {/* Title + Description + Button Fixed Layout */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground mb-1">{card.title}</h4>
+                    <p className="text-sm text-muted-foreground">{card.description}</p>
+                    {aiInsights && 'expected_outcome' in card && (
+                      <p className="text-xs text-primary mt-1">
+                        Expected outcome: {card.expected_outcome}
+                      </p>
+                    )}
+                  </div>
+                  <TakeAction
+                    action={{
+                      title: card.title,
+                      description: card.description,
+                      priority: card.priority,
+                      urgency: card.urgency,
+                      actions: card.actions
+                    }}
+                    className="w-full sm:w-auto mt-2 sm:mt-0"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -263,19 +266,6 @@ const InsightsPanel = () => {
                       Timeframe: {card.timeframe}
                     </p>
                   )}
-                </div>
-
-                {/* Fixed TakeAction Button */}
-                <div className="flex flex-col sm:flex-row sm:justify-end">
-                  <TakeAction 
-                    action={{
-                      title: card.title,
-                      description: card.description,
-                      priority: card.priority,
-                      urgency: card.urgency,
-                      actions: card.actions
-                    }}
-                  />
                 </div>
               </div>
             ))}
