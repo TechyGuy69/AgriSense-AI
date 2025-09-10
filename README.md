@@ -1,1 +1,1 @@
-
+🌱 AgriSense-AI is an AI-powered farming platform that provides real-time crop health insights, predictions, and geospatial visualization. Unlike traditional tools, it delivers actionable recommendations, all-in-one simplicity, and cloud accessibility—helping farmers make smarter, faster decisions.
