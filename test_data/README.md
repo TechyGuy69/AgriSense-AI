@@ -1,7 +1,7 @@
 ## 🧠 Model Training & Research
 
 This project includes a `notebooks/` folder containing Jupyter notebooks used for backend model training and experimentation.  
-You can explore them here: [notebooks/](./notebooks)
+You can explore them here: [notebooks/](./test_data)
 
 > **Note:** These notebooks are for research and development purposes and are not used directly in the production frontend.  
 They document the process and experiments that led to the trained models used in AgriSense AI.
